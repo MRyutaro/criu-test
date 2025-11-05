@@ -208,7 +208,6 @@ case "$1" in
             --tcp-established \
             --runtime runc \
             --print-stats \
-            -v "$WORKSPACE_DIR:/app" \
             2>&1)
         RESTORE_EXIT_CODE=$?
         set -e

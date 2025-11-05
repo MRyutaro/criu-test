@@ -73,9 +73,9 @@ case "$1" in
         sudo chown -R 1000:100 "$WORKSPACE_DIR" || true
         sudo chmod -R 775 "$WORKSPACE_DIR" || true
         # Jupyterが使用するディレクトリを/app配下に作成
-        mkdir -p "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data"
-        sudo chown -R 1000:100 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" || true
-        sudo chmod -R 775 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" || true
+        mkdir -p "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython"
+        sudo chown -R 1000:100 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython" || true
+        sudo chmod -R 775 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython" || true
         
         # privilegedモードで起動（criuのチェックポイント機能に必要）
         # runcランタイムを使用（checkpoint/restoreに必要）
@@ -207,6 +207,10 @@ case "$1" in
         # jovyanが書き込める権限
         sudo chown -R 1000:100 "$WORKSPACE_DIR" || true
         sudo chmod -R 775 "$WORKSPACE_DIR" || true
+        # 必要ディレクトリを用意
+        mkdir -p "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython"
+        sudo chown -R 1000:100 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython" || true
+        sudo chmod -R 775 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython" || true
         
         # set -e による途中終了を避けて詳細ログを取得
         set +e

@@ -1,0 +1,9 @@
+# Workspace directories (mounted to /app in containers)
+.workspace/
+criu_test/.workspace/
+jupyter_criu_test/.workspace/
+
+# Checkpoint files
+.checkpoint/
+criu_test/.checkpoint/
+jupyter_criu_test/.checkpoint/

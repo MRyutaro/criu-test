@@ -1,0 +1,6 @@
+checkpoint/
+.git/
+.gitignore
+*.md
+*.sh
+*.log

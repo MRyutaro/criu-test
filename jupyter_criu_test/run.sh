@@ -72,6 +72,10 @@ case "$1" in
         # Jupyterの実ユーザー(jovyan: 1000:100)が書き込めるように権限調整
         sudo chown -R 1000:100 "$WORKSPACE_DIR" || true
         sudo chmod -R 775 "$WORKSPACE_DIR" || true
+        # Jupyterが使用するディレクトリを/app配下に作成
+        mkdir -p "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data"
+        sudo chown -R 1000:100 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" || true
+        sudo chmod -R 775 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" || true
         
         # privilegedモードで起動（criuのチェックポイント機能に必要）
         # runcランタイムを使用（checkpoint/restoreに必要）

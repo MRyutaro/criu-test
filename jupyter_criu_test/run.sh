@@ -186,11 +186,15 @@ case "$1" in
         # レストア前のコンテナIDのリストを記録
         CONTAINERS_BEFORE=$(sudo podman ps -a --format '{{.ID}}' | sort)
         
-        # 既存のコンテナを削除（元のコンテナ名でレストアされる可能性があるため）
-        if sudo podman ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-            echo -e "${YELLOW}既存のコンテナ ($CONTAINER_NAME) を削除します...${NC}"
-            sudo podman stop "$CONTAINER_NAME" 2>/dev/null || true
-            sudo podman rm "$CONTAINER_NAME" 2>/dev/null || true
+        # 既存のコンテナを削除（元のコンテナ名およびバージョン付きコンテナ名があるとID競合になる）
+        if sudo podman ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}(_[0-9]+)?$"; then
+            echo -e "${YELLOW}既存の同名プレフィックスのコンテナを停止・削除します...${NC}"
+            for cname in $(sudo podman ps -a --format '{{.Names}}' | grep -E "^${CONTAINER_NAME}(_[0-9]+)?$"); do
+                echo "$cname"
+                sudo podman stop "$cname" 2>/dev/null || true
+                sudo podman rm "$cname" 2>/dev/null || true
+                sudo podman container cleanup "$cname" 2>/dev/null || true
+            done
         fi
         
         # .workspaceディレクトリを作成（存在しない場合）

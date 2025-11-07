@@ -94,9 +94,11 @@ do_checkpoint() {
     # Podmanの組み込みチェックポイント機能を使用（root権限が必要）
     # --export: チェックポイントをファイルにエクスポート（tar.gz形式）
     # --tcp-established: アクティブなTCP接続を含める（Jupyterなどのネットワーク接続がある場合に必要）
+    # --file-locks: ファイルロックをダンプする（CRIUのエラー回避のため）
     sudo podman container checkpoint \
         --export "$CHECKPOINT_DIR/checkpoint.tar.gz" \
         --tcp-established \
+        --file-locks \
         "$CONTAINER_NAME_CHECK" || {
         log "チェックポイントの作成に失敗しました"
         exit 1
@@ -164,6 +166,7 @@ do_restore() {
         --import "$CHECKPOINT_DIR/checkpoint.tar.gz" \
         --publish "$JUPYTER_PORT:8000" \
         --tcp-established \
+        --file-locks \
         --runtime runc \
         --print-stats \
         2>&1)

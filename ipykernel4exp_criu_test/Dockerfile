@@ -19,8 +19,9 @@ COPY uv.lock ./
 
 # 依存関係をインストール
 RUN uv sync --frozen --no-editable && \
-uv run ipykernel4exp install && \
-uv run jupyter kernelspec list
+    uv run ipykernel4exp install && \
+    uv run jupyter kernelspec list && \
+    /tmp/.venv/bin/python -m ensurepip
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -33,4 +34,4 @@ ENV PYTHONUNBUFFERED=1 \
     PATH="/tmp/.venv/bin:$PATH"
 
 # Jupyter Labを起動（署名DBを/app配下に移動）
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8000", "--no-browser", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''", "--NotebookNotary.db_file=/app/.jupyter/nbsignatures.db"]
+CMD ["uv", "run", "jupyter", "lab", "--ip=0.0.0.0", "--port=8000", "--no-browser", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''", "--NotebookNotary.db_file=/app/.jupyter/nbsignatures.db"]

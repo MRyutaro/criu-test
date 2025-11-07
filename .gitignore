@@ -7,3 +7,9 @@ jupyter_criu_test/.workspace/
 .checkpoint/
 criu_test/.checkpoint/
 jupyter_criu_test/.checkpoint/
+
+# ipykernel4exp_criu_test
+ipykernel4exp_criu_test/.workspace/
+ipykernel4exp_criu_test/.checkpoint/
+*.egg-info/
+.venv/

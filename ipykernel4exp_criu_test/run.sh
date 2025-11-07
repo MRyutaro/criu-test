@@ -81,7 +81,6 @@ do_checkpoint() {
         exit 1
     fi
     
-    log "${GREEN}チェックポイントを作成します... (コンテナ: $CONTAINER_NAME_CHECK)${NC}"
     log "${YELLOW}注意: チェックポイントにはroot権限が必要です${NC}"
     
     # ディスクバッファをフラッシュして、未書き込みのノート破損を防ぐ
@@ -95,6 +94,7 @@ do_checkpoint() {
     # --export: チェックポイントをファイルにエクスポート（tar.gz形式）
     # --tcp-established: アクティブなTCP接続を含める（Jupyterなどのネットワーク接続がある場合に必要）
     # --file-locks: ファイルロックをダンプする（CRIUのエラー回避のため）
+    log "${GREEN}チェックポイントを作成します...${NC}"
     sudo podman container checkpoint \
         --export "$CHECKPOINT_DIR/checkpoint.tar.gz" \
         --tcp-established \
@@ -103,11 +103,11 @@ do_checkpoint() {
         log "チェックポイントの作成に失敗しました"
         exit 1
     }
+    log "${GREEN}チェックポイントが作成されました！${NC}"
     
     # ファイルの所有権を現在のユーザーに変更
     sudo chown "$(id -u):$(id -g)" "$CHECKPOINT_DIR/checkpoint.tar.gz"
     
-    log "${GREEN}チェックポイントが作成されました！${NC}"
     log "チェックポイントファイル: $CHECKPOINT_DIR/checkpoint.tar.gz"
     log "レストアするには: $0 restore"
 }
@@ -119,7 +119,6 @@ do_restore() {
         exit 1
     fi
     
-    log "${GREEN}コンテナをレストアします...${NC}"
     log "${YELLOW}注意: レストアにはroot権限が必要です${NC}"
     
     # バージョン番号を決定（既存のコンテナ名から最大バージョンを取得）
@@ -162,6 +161,7 @@ do_restore() {
     
     # set -e による途中終了を避けて詳細ログを取得
     set +e
+    log "${GREEN}コンテナのレストアを開始します...${NC}"
     RESTORED_OUTPUT=$(sudo podman container restore \
         --import "$CHECKPOINT_DIR/checkpoint.tar.gz" \
         --publish "$JUPYTER_PORT:8000" \
@@ -171,6 +171,7 @@ do_restore() {
         --print-stats \
         2>&1)
     RESTORE_EXIT_CODE=$?
+    log "${GREEN}コンテナのレストアが完了しました！${NC}"
     set -e
     log "restore exit code: $RESTORE_EXIT_CODE"
     log "restore output:\n$RESTORED_OUTPUT"
@@ -233,8 +234,7 @@ do_restore() {
         log "${YELLOW}警告: レストアされたコンテナが停止しています${NC}"
         log "コンテナのログを確認してください: sudo podman logs $RESTORED_CONTAINER_NAME"
     fi
-    
-    log "${GREEN}レストアが完了しました！${NC}"
+
     log "コンテナ名: $RESTORED_CONTAINER_NAME"
     log "Jupyter URL: http://localhost:$JUPYTER_PORT"
     log "ログを確認するには: sudo podman logs $RESTORED_CONTAINER_NAME"

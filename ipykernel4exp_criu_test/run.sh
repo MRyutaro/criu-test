@@ -52,34 +52,14 @@ mkdir -p "$CHECKPOINT_DIR"
 
 # チェックポイント処理を関数化
 do_checkpoint() {
-    # 実行中のコンテナを検出（元のコンテナ名またはバージョン付きコンテナ名）
-    CONTAINER_NAME_CHECK=""
-    
-    # 方法1: 元のコンテナ名が実行中か確認
-    if sudo podman ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        CONTAINER_NAME_CHECK="$CONTAINER_NAME"
-    else
-        # 方法2: バージョン付きコンテナ名の中で最新のものを検出
-        LATEST_VERSION=0
-        LATEST_CONTAINER=""
-        for container in $(sudo podman ps --format '{{.Names}}' | grep "^${CONTAINER_NAME}_[0-9]\+$"); do
-            VERSION=$(echo "$container" | sed "s/^${CONTAINER_NAME}_//")
-            if [ "$VERSION" -gt "$LATEST_VERSION" ] 2>/dev/null; then
-                LATEST_VERSION=$VERSION
-                LATEST_CONTAINER="$container"
-            fi
-        done
-        if [ -n "$LATEST_CONTAINER" ]; then
-            CONTAINER_NAME_CHECK="$LATEST_CONTAINER"
-        fi
-    fi
-    
-    if [ -z "$CONTAINER_NAME_CHECK" ]; then
+    # 実行中のコンテナを検出
+    if ! sudo podman ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
         log "エラー: 実行中のコンテナが見つかりません"
         echo "コンテナを起動するには: $0 start"
-        echo "または、レストアされたコンテナが実行中であることを確認してください"
         exit 1
     fi
+
+    CONTAINER_NAME_CHECK="$CONTAINER_NAME"
     
     log "${YELLOW}注意: チェックポイントにはroot権限が必要です${NC}"
     
@@ -267,23 +247,14 @@ case "$1" in
     
     stop)
         log "${YELLOW}コンテナを停止します...${NC}"
-        # 元のコンテナ名とバージョン付きコンテナ名の両方を停止
         sudo podman stop "$CONTAINER_NAME" 2>/dev/null || true
-        for container in $(sudo podman ps -a --format '{{.Names}}' | grep "^${CONTAINER_NAME}_[0-9]\+$"); do
-            sudo podman stop "$container" 2>/dev/null || true
-        done
         log "停止完了"
         ;;
     
     clean)
         log "${YELLOW}コンテナとチェックポイントファイルを削除します...${NC}"
-        # 元のコンテナ名とバージョン付きコンテナ名の両方を削除
         sudo podman stop "$CONTAINER_NAME" 2>/dev/null || true
         sudo podman rm "$CONTAINER_NAME" 2>/dev/null || true
-        for container in $(sudo podman ps -a --format '{{.Names}}' | grep "^${CONTAINER_NAME}_[0-9]\+$"); do
-            sudo podman stop "$container" 2>/dev/null || true
-            sudo podman rm "$container" 2>/dev/null || true
-        done
         rm -rf "$CHECKPOINT_DIR"
         log "クリーンアップ完了"
         ;;

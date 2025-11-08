@@ -163,6 +163,36 @@ do_restore() {
     sudo podman ps -a --format '{{.ID}}\t{{.Names}}\t{{.Status}}'
 
     log "Jupyter URL: http://localhost:$JUPYTER_PORT"
+    
+    # Jupyterの起動時刻チェック（/api/kernelsで何か返ってきたタイミング）
+    log "${GREEN}Jupyterの起動を待機中...${NC}"
+    RESTORE_START_TIME=$(date +%s.%N)
+    MAX_WAIT=60  # 最大60秒待機
+    WAIT_INTERVAL=0.001  # 0.001秒間隔でチェック
+    ELAPSED=0
+    
+    while [ $ELAPSED -lt $MAX_WAIT ]; do
+        # /api/kernelsにリクエストを送信してレスポンスボディを取得
+        RESPONSE_BODY=$(curl -s "http://localhost:$JUPYTER_PORT/api/kernels" 2>/dev/null || echo "")
+        
+        # JSON配列（カーネル情報）が返ってきたかチェック
+        # 例: [{"id": "ca3255cc-8be9-4c12-b8b1-98694f26e59c", "name": "ipykernel4exp", ...}]
+        if [ -n "$RESPONSE_BODY" ] && \
+            [ "$(echo "$RESPONSE_BODY" | grep -c '"id"')" -gt 0 ] && \
+            [ "$(echo "$RESPONSE_BODY" | grep -c '^\[')" -gt 0 ] && \
+            [ "$(echo "$RESPONSE_BODY" | grep -c '\]$')" -gt 0 ]; then
+            # JSON配列が返ってきた（カーネル情報が含まれている）
+            log "${GREEN}Jupyterが起動しました！（$RESPONSE_BODY）${NC}"
+            break
+        fi
+        
+        sleep $WAIT_INTERVAL
+        ELAPSED=$(echo "$ELAPSED + $WAIT_INTERVAL" | bc)
+    done
+    
+    if [ $ELAPSED -ge $MAX_WAIT ]; then
+        log "${YELLOW}警告: Jupyterの起動確認がタイムアウトしました（${MAX_WAIT}秒）${NC}"
+    fi
 }
 
 

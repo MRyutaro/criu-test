@@ -123,10 +123,11 @@ do_restore() {
 
     # 既存コンテナ削除
     if sudo podman ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        log "${YELLOW}既存の同名コンテナを停止・削除します...${NC}"
+        log "${GREEN}既存の同名コンテナを停止・削除します...${NC}"
         sudo podman stop "$CONTAINER_NAME" 2>/dev/null || true
         sudo podman rm "$CONTAINER_NAME" 2>/dev/null || true
         sudo podman container cleanup "$CONTAINER_NAME" 2>/dev/null || true
+        log "${GREEN}既存の同名コンテナを停止・削除しました${NC}"
     fi
 
     # workspace 設定

@@ -15,8 +15,6 @@ COPY ipykernel4exp/ ./ipykernel4exp/
 COPY pyproject.toml ./
 COPY uv.lock ./
 
-# ENV JUPYTER_DATA_DIR="/tmp/.venv/share/jupyter"
-
 # 依存関係をインストール
 RUN uv sync --frozen --no-editable && \
     uv run ipykernel4exp install && \

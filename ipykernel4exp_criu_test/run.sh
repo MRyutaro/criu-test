@@ -163,7 +163,6 @@ do_restore() {
     sudo podman ps -a --format '{{.ID}}\t{{.Names}}\t{{.Status}}'
 
     log "Jupyter URL: http://localhost:$JUPYTER_PORT"
-    log "ログを確認するには: sudo podman logs $CONTAINER_NAME"
 }
 
 

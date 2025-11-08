@@ -4,7 +4,7 @@
 set -e
 
 # タイムスタンプ付きログ
-now() { TZ='Asia/Tokyo' date '+%F %T.%3N'; }
+now() { date '+%F %T.%3N'; }
 log() { echo -e "[$(now)] $*"; }
 
 # ディレクトリの設定
@@ -120,46 +120,24 @@ do_restore() {
     fi
     
     log "${YELLOW}注意: レストアにはroot権限が必要です${NC}"
-    
-    # バージョン番号を決定（既存のコンテナ名から最大バージョンを取得）
-    MAX_VERSION=0
-    for container in $(sudo podman ps -a --format '{{.Names}}' | grep "^${CONTAINER_NAME}_[0-9]\+$"); do
-        VERSION=$(echo "$container" | sed "s/^${CONTAINER_NAME}_//")
-        if [ "$VERSION" -gt "$MAX_VERSION" ] 2>/dev/null; then
-            MAX_VERSION=$VERSION
-        fi
-    done
-    NEW_VERSION=$((MAX_VERSION + 1))
-    RESTORED_CONTAINER_NAME="${CONTAINER_NAME}_${NEW_VERSION}"
-    
-    log "${YELLOW}新しいコンテナ名: $RESTORED_CONTAINER_NAME${NC}"
-    
-    # レストア前のコンテナIDのリストを記録
-    CONTAINERS_BEFORE=$(sudo podman ps -a --format '{{.ID}}' | sort)
-    
-    # 既存のコンテナを削除（元のコンテナ名およびバージョン付きコンテナ名があるとID競合になる）
-    if sudo podman ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}(_[0-9]+)?$"; then
-        log "${YELLOW}既存の同名プレフィックスのコンテナを停止・削除します...${NC}"
-        for cname in $(sudo podman ps -a --format '{{.Names}}' | grep -E "^${CONTAINER_NAME}(_[0-9]+)?$"); do
-            echo "$cname"
-            sudo podman stop "$cname" 2>/dev/null || true
-            sudo podman rm "$cname" 2>/dev/null || true
-            sudo podman container cleanup "$cname" 2>/dev/null || true
-        done
+
+    # 既存コンテナ削除
+    if sudo podman ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+        log "${YELLOW}既存の同名コンテナを停止・削除します...${NC}"
+        sudo podman stop "$CONTAINER_NAME" 2>/dev/null || true
+        sudo podman rm "$CONTAINER_NAME" 2>/dev/null || true
+        sudo podman container cleanup "$CONTAINER_NAME" 2>/dev/null || true
     fi
-    
-    # .workspaceディレクトリを作成（存在しない場合）
+
+    # workspace 設定
     WORKSPACE_DIR="$SCRIPT_DIR/.workspace"
     mkdir -p "$WORKSPACE_DIR"
-    # jovyanが書き込める権限
     sudo chown -R 1000:100 "$WORKSPACE_DIR" || true
     sudo chmod -R 775 "$WORKSPACE_DIR" || true
-    # 必要ディレクトリを用意
     mkdir -p "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython"
     sudo chown -R 1000:100 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython" || true
     sudo chmod -R 775 "$WORKSPACE_DIR/.jupyter" "$WORKSPACE_DIR/.jupyter_runtime" "$WORKSPACE_DIR/.jupyter_data" "$WORKSPACE_DIR/.ipython" || true
-    
-    # set -e による途中終了を避けて詳細ログを取得
+
     set +e
     log "${GREEN}コンテナのレストアを開始します...${NC}"
     RESTORED_OUTPUT=$(sudo podman container restore \
@@ -171,74 +149,22 @@ do_restore() {
         --print-stats \
         2>&1)
     RESTORE_EXIT_CODE=$?
-    log "${GREEN}コンテナのレストアが完了しました！${NC}"
     set -e
-    log "restore exit code: $RESTORE_EXIT_CODE"
-    log "restore output:\n$RESTORED_OUTPUT"
-    
+    log "${GREEN}コンテナのレストアが完了しました！（exit code: $RESTORE_EXIT_CODE）${NC}"
+
     if [ $RESTORE_EXIT_CODE -ne 0 ]; then
         log "レストアに失敗しました"
         echo "$RESTORED_OUTPUT"
         exit 1
     fi
-    
-    # 少し待ってからコンテナIDを取得
-    sleep 1
-    log "containers after restore:"
-    sudo podman ps -a --format '{{.ID}}\t{{.Names}}\t{{.Status}}'
-    
-    # レストアされたコンテナIDを取得
-    # 方法1: 出力からコンテナIDを抽出
-    RESTORED_ID=$(echo "$RESTORED_OUTPUT" | grep -oE '[a-f0-9]{64}' | head -1)
-    
-    # 方法2: レストア後に新しく作成されたコンテナを取得
-    if [ -z "$RESTORED_ID" ]; then
-        CONTAINERS_AFTER=$(sudo podman ps -a --format '{{.ID}}' | sort)
-        NEW_CONTAINER=$(comm -13 <(echo "$CONTAINERS_BEFORE") <(echo "$CONTAINERS_AFTER") | head -1)
-        if [ -n "$NEW_CONTAINER" ]; then
-            RESTORED_ID="$NEW_CONTAINER"
-        fi
-    fi
-    
-    # 方法3: 元のコンテナ名で検索（チェックポイントファイルに元の名前が含まれている場合）
-    if [ -z "$RESTORED_ID" ]; then
-        RESTORED_ID=$(sudo podman ps -a --format '{{.ID}}' --filter "name=$CONTAINER_NAME" | head -1)
-    fi
-    
-    if [ -z "$RESTORED_ID" ]; then
-        log "レストアされたコンテナIDを取得できませんでした"
-        echo "レストア出力: $RESTORED_OUTPUT"
-        echo "現在のコンテナ一覧:"
-        sudo podman ps -a --format '{{.ID}}\t{{.Names}}\t{{.Status}}'
-        exit 1
-    fi
-    
-    log "取得したコンテナID: $RESTORED_ID"
-    
-    # コンテナ名を変更（レストア後に名前を変更）
-    CURRENT_NAME=$(sudo podman ps -a --format '{{.Names}}' --filter "id=$RESTORED_ID")
-    if [ "$CURRENT_NAME" != "$RESTORED_CONTAINER_NAME" ]; then
-        sudo podman rename "$RESTORED_ID" "$RESTORED_CONTAINER_NAME" || {
-            log "コンテナ名の変更に失敗しました"
-            echo "コンテナID: $RESTORED_ID"
-            echo "現在のコンテナ名: $CURRENT_NAME"
-            echo "期待されるコンテナ名: $RESTORED_CONTAINER_NAME"
-            exit 1
-        }
-        log "コンテナ名を $CURRENT_NAME から $RESTORED_CONTAINER_NAME に変更しました"
-    fi
-    
-    # レストア後のコンテナの状態を確認
-    CONTAINER_STATUS=$(sudo podman ps -a --format '{{.Status}}' --filter "id=$RESTORED_ID")
-    if echo "$CONTAINER_STATUS" | grep -q "Exited"; then
-        log "${YELLOW}警告: レストアされたコンテナが停止しています${NC}"
-        log "コンテナのログを確認してください: sudo podman logs $RESTORED_CONTAINER_NAME"
-    fi
 
-    log "コンテナ名: $RESTORED_CONTAINER_NAME"
+    log "restore output:\n$RESTORED_OUTPUT"
+    sudo podman ps -a --format '{{.ID}}\t{{.Names}}\t{{.Status}}'
+
     log "Jupyter URL: http://localhost:$JUPYTER_PORT"
-    log "ログを確認するには: sudo podman logs $RESTORED_CONTAINER_NAME"
+    log "ログを確認するには: sudo podman logs $CONTAINER_NAME"
 }
+
 
 # 引数に応じて処理を分岐
 case "$1" in

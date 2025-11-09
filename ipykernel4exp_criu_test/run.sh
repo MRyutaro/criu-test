@@ -226,7 +226,7 @@ case "$1" in
         log "${GREEN}Jupyterコンテナが起動しました！${NC}"
         log "コンテナ名: $CONTAINER_NAME"
         log "Jupyter URL: http://localhost:$JUPYTER_PORT"
-        log "ログを確認するには: sudo podman logs $CONTAINER_NAME"
+        log "ログを確認するには: $0 logs"
         log "チェックポイントを作成するには: $0 checkpoint"
         ;;
     
@@ -238,13 +238,26 @@ case "$1" in
         do_restore
         ;;
     
-    restart)
+    cr)
         log "${GREEN}コンテナを再起動します（checkpoint → restore）...${NC}"
         do_checkpoint
         log ""
         do_restore
         ;;
-    
+
+    restart)
+        log "${YELLOW}コンテナを再起動します（通常起動）...${NC}"
+        sudo podman stop "$CONTAINER_NAME" 2>/dev/null || true
+        sudo podman rm "$CONTAINER_NAME" 2>/dev/null || true
+        log "コンテナが停止されました。"
+        "$0" start
+        ;;
+
+    logs)
+        log "${BLUE}コンテナのログを表示します (Ctrl+Cで終了)...${NC}"
+        sudo podman logs -f "$CONTAINER_NAME"
+        ;;
+
     stop)
         log "${YELLOW}コンテナを停止します...${NC}"
         sudo podman stop "$CONTAINER_NAME" 2>/dev/null || true
@@ -260,14 +273,16 @@ case "$1" in
         ;;
     
     *)
-        echo "使用方法: $0 {build|start|checkpoint|restore|restart|stop|clean}"
+        echo "使用方法: $0 {build|start|checkpoint|restore|cr|restart|logs|stop|clean}"
         echo ""
         echo "コマンド:"
         echo "  build      - Podmanイメージをビルド"
         echo "  start      - Jupyterコンテナを開始"
         echo "  checkpoint - 実行中のコンテナのチェックポイントを作成"
         echo "  restore    - チェックポイントからコンテナをレストア"
-        echo "  restart    - チェックポイントを作成してからレストア（再起動）"
+        echo "  cr         - チェックポイントを作成してからレストア（再起動）"
+        echo "  restart    - コンテナを再起動（通常起動）"
+        echo "  logs       - コンテナのログを表示（リアルタイム）"
         echo "  stop       - コンテナを停止"
         echo "  clean      - コンテナとチェックポイントファイルを削除"
         echo ""
@@ -276,7 +291,9 @@ case "$1" in
         echo "  $0 start      # コンテナを開始"
         echo "  $0 checkpoint # チェックポイントを作成"
         echo "  $0 restore    # レストア"
-        echo "  $0 restart    # チェックポイント作成→レストア（再起動）"
+        echo "  $0 cr         # チェックポイント作成→レストア（再起動）"
+        echo "  $0 restart    # コンテナを再起動（通常起動）"
+        echo "  $0 logs       # ログを表示"
         exit 1
         ;;
 esac

@@ -35,6 +35,7 @@ class ipykernel4exp(IPythonKernel):
     def __init__(self, **kwargs):
         self.__setup_logger()
         super().__init__(**kwargs)
+        self.logger.info("ipykernel4exp initialized")
 
     def __setup_logger(self):
         """
